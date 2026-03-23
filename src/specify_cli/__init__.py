@@ -2697,6 +2697,12 @@ def agent_switch(
                 if agent_folder:
                     agent_dir = project_path / agent_folder.rstrip("/")
                     if agent_dir.is_dir():
+                        if not force:
+                            console.print(f"[yellow]No install manifest found for '{current_agent}' (legacy project).[/yellow]")
+                            console.print(f"  Directory to remove: {agent_dir}")
+                            if not typer.confirm("Remove this directory?"):
+                                console.print("[dim]Aborted. Use --force to skip this check.[/dim]")
+                                raise typer.Exit(0)
                         shutil.rmtree(agent_dir)
                         console.print(f"  [green]✓[/green] {current_agent} directory removed (legacy)")
                 else:
@@ -2708,6 +2714,12 @@ def agent_switch(
             if agent_folder:
                 agent_dir = project_path / agent_folder.rstrip("/")
                 if agent_dir.is_dir():
+                    if not force:
+                        console.print(f"[yellow]No agent pack found for '{current_agent}' (legacy project).[/yellow]")
+                        console.print(f"  Directory to remove: {agent_dir}")
+                        if not typer.confirm("Remove this directory?"):
+                            console.print("[dim]Aborted. Use --force to skip this check.[/dim]")
+                            raise typer.Exit(0)
                     shutil.rmtree(agent_dir)
                     console.print(f"  [green]✓[/green] {current_agent} directory removed (legacy)")
 
@@ -2757,6 +2769,7 @@ def agent_switch(
 
     # Update init options
     options["ai"] = agent_id
+    options["agent_pack"] = True
     options.pop("agent_switch_error", None)  # clear any previous error
     init_options_file.write_text(json.dumps(options, indent=2), encoding="utf-8")
 

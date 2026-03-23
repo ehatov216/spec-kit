@@ -47,6 +47,12 @@ class CommandRegistrar:
             "args": "$ARGUMENTS",
             "extension": ".md"
         },
+        "cursor-agent": {
+            "dir": ".cursor/commands",
+            "format": "markdown",
+            "args": "$ARGUMENTS",
+            "extension": ".md"
+        },
         "qwen": {
             "dir": ".qwen/commands",
             "format": "markdown",

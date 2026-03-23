@@ -721,6 +721,14 @@ def resolve_agent_pack(
         manifest_file = pack_dir / MANIFEST_FILENAME
         if manifest_file.is_file():
             manifest = AgentManifest.from_yaml(manifest_file)
+            # Verify the manifest's declared ID matches the requested
+            # agent_id to prevent a malicious override from injecting
+            # a different ID (used for file paths and module names).
+            if manifest.id != agent_id:
+                raise PackResolutionError(
+                    f"Agent pack manifest ID '{manifest.id}' does not match "
+                    f"requested ID '{agent_id}' (in {pack_dir})."
+                )
             if source == "embedded":
                 embedded_manifest = manifest
 
