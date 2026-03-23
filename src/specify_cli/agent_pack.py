@@ -347,13 +347,20 @@ class AgentBootstrap:
 
         All files returned by ``setup()`` are tracked — including shared
         project infrastructure — so that teardown/switch can precisely
-        remove everything the agent installed.
+        remove everything the agent installed.  This is intentional:
+        ``remove_tracked_files()`` only deletes files whose SHA-256
+        hash still matches the original, so user-modified files are
+        always preserved (unless ``--force`` is used).
 
         Args:
             agent_files: Files reported by :meth:`setup`.
             extension_files: Files created by extension registration.
         """
         all_extension = list(extension_files or [])
+        # Track ALL files returned by setup(), not just those under the
+        # agent's directory tree.  This is safe because teardown only
+        # removes files that are unmodified (hash check) and prompts
+        # for confirmation on modified files.
         all_agent: List[Path] = list(agent_files or [])
 
         # Scan the agent's directory tree for files created by later
