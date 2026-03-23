@@ -344,7 +344,7 @@ class TestDefaultBootstrap:
         data["command_registration"]["commands_dir"] = ""
         m = AgentManifest.from_dict(data)
         b = DefaultBootstrap(m)
-        with pytest.raises(AgentPackError, match="empty commands_dir"):
+        with pytest.raises(AgentPackError, match=f"Agent '{m.id}' has an empty commands_dir"):
             b.agent_dir(tmp_path)
 
 

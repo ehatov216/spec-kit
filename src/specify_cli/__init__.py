@@ -2731,7 +2731,8 @@ def agent_switch(
                 )
                 options["agent_switch_error"] = (
                     f"Switch to '{agent_id}' failed after teardown of "
-                    f"'{current_agent}'. Restore manually."
+                    f"'{current_agent}'. Run 'specify init --here --agent "
+                    f"{current_agent}' to restore."
                 )
                 init_options_file.write_text(
                     json.dumps(options, indent=2), encoding="utf-8"
