@@ -2740,14 +2740,12 @@ def agent_switch(
                 rollback_resolved = resolve_agent_pack(current_agent, project_path=project_path)
                 rollback_bs = load_bootstrap(rollback_resolved.path, rollback_resolved.manifest)
                 rollback_files = rollback_bs.setup(project_path, script_type, options)
+                # Re-register extension commands (same as the success path)
+                rollback_ext_files = _reregister_extension_commands(project_path, current_agent)
                 rollback_bs.finalize_setup(
                     project_path,
                     agent_files=rollback_files,
-                    extension_files=list(
-                        (project_path / p).resolve()
-                        for p in old_tracked_ext
-                        if (project_path / p).is_file()
-                    ),
+                    extension_files=rollback_ext_files,
                 )
                 console.print(f"  [green]✓[/green] {current_agent} restored")
             except Exception:

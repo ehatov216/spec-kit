@@ -200,6 +200,24 @@ class AgentBootstrap:
 
     Subclasses override :meth:`setup` and :meth:`teardown` to define
     agent-specific lifecycle operations.
+
+    **Lifecycle flow (setup → tracking → teardown):**
+
+    1. ``setup()`` installs files and returns **every** file it created
+       (agent commands, shared scripts, templates, etc.).
+    2. The CLI calls ``finalize_setup(agent_files, extension_files)``
+       which SHA-256 hashes each file and writes the manifest at
+       ``.specify/agent-manifest-<id>.json``.
+    3. During switch/remove, the CLI reads the manifest via
+       ``get_tracked_files()`` and calls ``check_modified_files()``
+       to detect changes.  Modified files are listed and the user
+       is prompted for confirmation.
+    4. ``teardown()`` delegates to ``remove_tracked_files()`` which
+       **compares hashes before deleting** — only files whose
+       SHA-256 still matches the original are removed.  Modified
+       files are preserved unless ``--force`` is used.  This makes
+       it safe to track all files (including shared project
+       infrastructure) without risk of deleting user work.
     """
 
     def __init__(self, manifest: AgentManifest):
@@ -637,8 +655,16 @@ def remove_tracked_files(
                 )
 
     removed: List[str] = []
+    project_root = project_path.resolve()
     for rel_path, original_hash in entries.items():
         abs_path = project_path / rel_path
+        # Guard against path traversal: reject entries that resolve
+        # outside the project directory (e.g. via "../" in a
+        # tampered manifest).
+        try:
+            abs_path.resolve().relative_to(project_root)
+        except ValueError:
+            continue
         if abs_path.is_file():
             if original_hash and _sha256(abs_path) != original_hash:
                 # File was modified since installation — skip unless forced
