@@ -469,13 +469,23 @@ def _hash_file_list(
     project_path: Path,
     files: List[Path],
 ) -> Dict[str, str]:
-    """Build a {relative_path: sha256} dict from a list of file paths."""
+    """Build a {relative_path: sha256} dict from a list of file paths.
+
+    Uses POSIX-style separators for stable cross-platform manifests.
+    Silently skips files that are not under *project_path*.
+    """
     entries: Dict[str, str] = {}
+    project_root = project_path.resolve()
     for file_path in files:
         abs_path = project_path / file_path if not file_path.is_absolute() else file_path
-        if abs_path.is_file():
-            rel = str(abs_path.relative_to(project_path))
-            entries[rel] = _sha256(abs_path)
+        if not abs_path.is_file():
+            continue
+        try:
+            rel = abs_path.resolve().relative_to(project_root)
+        except ValueError:
+            # File is outside the project root — skip it
+            continue
+        entries[rel.as_posix()] = _sha256(abs_path)
     return entries
 
 
@@ -607,9 +617,11 @@ def remove_tracked_files(
 ) -> List[str]:
     """Remove individual tracked files.
 
-    If *files* is provided, exactly those files are removed (the values
-    are ignored but accepted for forward compatibility).  Otherwise the
-    install manifest for *agent_id* is read.
+    If *files* is provided, those files are candidates for removal.
+    Each file's current SHA-256 is compared against the recorded hash;
+    files whose hash no longer matches (i.e. user-modified) are skipped
+    unless *force* is ``True``.  When *files* is ``None``, the install
+    manifest for *agent_id* is read instead.
 
     Raises :class:`AgentFileModifiedError` if any tracked file was
     modified and *force* is ``False`` (only when reading from the
@@ -618,12 +630,16 @@ def remove_tracked_files(
 
     Directories are **never** deleted — only individual files.
 
+    The install manifest is only deleted when every tracked file was
+    successfully removed.  If some files were skipped (modified), the
+    manifest is preserved so they remain tracked.
+
     Args:
         project_path: Project root directory.
         agent_id: Agent identifier.
         force: When ``True``, delete even modified files.
-        files: Explicit mapping of project-relative path → hash.  When
-            supplied, the install manifest is not consulted.
+        files: Mapping of project-relative path → SHA-256 hash.
+            When supplied, the install manifest is not consulted.
 
     Returns:
         List of project-relative paths that were removed.
@@ -673,9 +689,13 @@ def remove_tracked_files(
             abs_path.unlink()
             removed.append(rel_path)
 
-    # Clean up the install manifest itself
+    # Clean up the install manifest only when all tracked files were
+    # removed.  If some were skipped (modified), keep the manifest so
+    # those files remain tracked for future teardown attempts.
     if manifest_file.is_file():
-        manifest_file.unlink(missing_ok=True)
+        remaining = len(entries) - len(removed)
+        if remaining == 0:
+            manifest_file.unlink(missing_ok=True)
     return removed
 
 

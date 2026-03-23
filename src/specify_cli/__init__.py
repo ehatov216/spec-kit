@@ -2685,7 +2685,7 @@ def agent_switch(
                 console.print(f"  [dim]Tearing down {current_agent}...[/dim]")
                 current_bootstrap.teardown(
                     project_path,
-                    force=True,  # already confirmed above
+                    force=force,
                     files=all_files,
                 )
                 console.print(f"  [green]✓[/green] {current_agent} removed")
