@@ -346,21 +346,17 @@ class AgentBootstrap:
         the agent's directory tree for anything additional.
 
         All files returned by ``setup()`` are tracked — including shared
-        project infrastructure — so that teardown/switch can precisely
-        remove everything the agent installed.  This is intentional:
-        ``remove_tracked_files()`` only deletes files whose SHA-256
-        hash still matches the original, so user-modified files are
-        always preserved (unless ``--force`` is used).
+        project infrastructure — so that teardown/switch can detect
+        modifications.  ``remove_tracked_files()`` compares SHA-256
+        hashes before deleting and will only remove files whose hash
+        still matches, preserving any user-modified files (unless
+        ``--force`` is used).
 
         Args:
             agent_files: Files reported by :meth:`setup`.
             extension_files: Files created by extension registration.
         """
         all_extension = list(extension_files or [])
-        # Track ALL files returned by setup(), not just those under the
-        # agent's directory tree.  This is safe because teardown only
-        # removes files that are unmodified (hash check) and prompts
-        # for confirmation on modified files.
         all_agent: List[Path] = list(agent_files or [])
 
         # Scan the agent's directory tree for files created by later
@@ -641,9 +637,13 @@ def remove_tracked_files(
                 )
 
     removed: List[str] = []
-    for rel_path in entries:
+    for rel_path, original_hash in entries.items():
         abs_path = project_path / rel_path
         if abs_path.is_file():
+            if original_hash and _sha256(abs_path) != original_hash:
+                # File was modified since installation — skip unless forced
+                if not force:
+                    continue
             abs_path.unlink()
             removed.append(rel_path)
 
@@ -792,6 +792,11 @@ def list_all_agents(project_path: Optional[Path] = None) -> List[ResolvedPack]:
     """
     seen: dict[str, ResolvedPack] = {}
 
+    # Track embedded versions separately so overrides can accurately
+    # reference what they replace, even after catalog/project/user
+    # packs have overwritten the seen dict entry.
+    embedded_versions: dict[str, str] = {}
+
     # Start from lowest priority (embedded) so higher priorities overwrite
     for manifest in list_embedded_agents():
         seen[manifest.id] = ResolvedPack(
@@ -799,6 +804,7 @@ def list_all_agents(project_path: Optional[Path] = None) -> List[ResolvedPack]:
             source="embedded",
             path=manifest.pack_path or _embedded_agents_dir() / manifest.id,
         )
+        embedded_versions[manifest.id] = manifest.version
 
     # Catalog cache
     catalog_dir = _catalog_agents_dir()
@@ -808,7 +814,7 @@ def list_all_agents(project_path: Optional[Path] = None) -> List[ResolvedPack]:
             if child.is_dir() and mf.is_file():
                 try:
                     m = AgentManifest.from_yaml(mf)
-                    overrides = f"embedded v{seen[m.id].manifest.version}" if m.id in seen else None
+                    overrides = f"embedded v{embedded_versions[m.id]}" if m.id in embedded_versions else None
                     seen[m.id] = ResolvedPack(manifest=m, source="catalog", path=child, overrides=overrides)
                 except AgentPackError:
                     continue
@@ -822,7 +828,7 @@ def list_all_agents(project_path: Optional[Path] = None) -> List[ResolvedPack]:
                 if child.is_dir() and mf.is_file():
                     try:
                         m = AgentManifest.from_yaml(mf)
-                        overrides = f"embedded v{seen[m.id].manifest.version}" if m.id in seen else None
+                        overrides = f"embedded v{embedded_versions[m.id]}" if m.id in embedded_versions else None
                         seen[m.id] = ResolvedPack(manifest=m, source="project", path=child, overrides=overrides)
                     except AgentPackError:
                         continue
@@ -835,7 +841,7 @@ def list_all_agents(project_path: Optional[Path] = None) -> List[ResolvedPack]:
             if child.is_dir() and mf.is_file():
                 try:
                     m = AgentManifest.from_yaml(mf)
-                    overrides = f"embedded v{seen[m.id].manifest.version}" if m.id in seen else None
+                    overrides = f"embedded v{embedded_versions[m.id]}" if m.id in embedded_versions else None
                     seen[m.id] = ResolvedPack(manifest=m, source="user", path=child, overrides=overrides)
                 except AgentPackError:
                     continue
