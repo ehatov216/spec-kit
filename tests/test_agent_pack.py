@@ -5,7 +5,6 @@ CLI commands, and consistency with AGENT_CONFIG / CommandRegistrar.AGENT_CONFIGS
 """
 
 import json
-import shutil
 import textwrap
 from pathlib import Path
 
@@ -22,7 +21,6 @@ from specify_cli.agent_pack import (
     AgentPackError,
     ManifestValidationError,
     PackResolutionError,
-    ResolvedPack,
     _manifest_path,
     _sha256,
     check_modified_files,
@@ -548,9 +546,8 @@ class TestEmbeddedPacksConsistency:
             manifest_file = child / MANIFEST_FILENAME
             if not manifest_file.is_file():
                 continue
-            # Should not raise
-            warnings = validate_pack(child)
-            # Warnings are acceptable; hard errors are not
+            # Should not raise — warnings are acceptable; hard errors are not
+            validate_pack(child)
 
 
 # ===================================================================

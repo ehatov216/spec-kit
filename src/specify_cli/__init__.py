@@ -2505,7 +2505,7 @@ def agent_info(
     if resolved.source == "catalog":
         source_display = f"catalog — {resolved.path}"
     elif resolved.source == "embedded":
-        source_display = f"embedded (bundled in specify-cli wheel)"
+        source_display = "embedded (bundled in specify-cli wheel)"
 
     info_table.add_row("Source", source_display)
     if resolved.overrides:
@@ -2871,8 +2871,8 @@ def agent_add(
         console.print(f"[green]✓[/green] Installed '{manifest.id}' ({manifest.name}) from {source}")
     else:
         # Catalog fetch — placeholder for future catalog integration
-        console.print(f"[yellow]Catalog fetch not yet implemented.[/yellow]")
-        console.print(f"[dim]Use --from <path> to install from a local directory.[/dim]")
+        console.print("[yellow]Catalog fetch not yet implemented.[/yellow]")
+        console.print("[dim]Use --from <path> to install from a local directory.[/dim]")
         raise typer.Exit(1)
 
 

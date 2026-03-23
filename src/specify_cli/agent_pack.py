@@ -563,7 +563,7 @@ def remove_tracked_files(
             modified = check_modified_files(project_path, agent_id)
             if modified:
                 raise AgentFileModifiedError(
-                    f"The following agent files have been modified since installation:\n"
+                    "The following agent files have been modified since installation:\n"
                     + "\n".join(f"  {p}" for p in modified)
                     + "\nUse --force to remove them anyway."
                 )
