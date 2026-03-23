@@ -695,11 +695,12 @@ def remove_tracked_files(
             abs_path.unlink()
             removed.append(rel_path)
 
-    # Clean up the install manifest only when no tracked files remain
-    # on disk.  Files already deleted by the user count as gone, not
-    # as "remaining" — only files that still exist and were skipped
-    # (e.g. modified without --force) prevent manifest cleanup.
-    if manifest_file.is_file():
+    # Clean up the install manifest only when the full tracked set was
+    # processed (i.e. read from the manifest itself).  When an explicit
+    # ``files`` dict is provided the caller may be passing a subset
+    # (e.g. only agent_files), so deleting the manifest could lose
+    # tracking of entries not in the subset.
+    if files is None and manifest_file.is_file():
         still_on_disk = sum(
             1 for rel_path in entries
             if (project_path / rel_path).is_file()
